@@ -8,6 +8,7 @@
       storage: /media/usb-storage
       transmission_user: admin
       transmission_pass: password
+      rss_feed: 'http://showrss.info/rss.php?user_id=13749&hd=1&proper=1&'
 
     tasks:
      - name: ensure system is up to date
