@@ -1,0 +1,110 @@
+---
+    #######################
+    ### SETUP BANANAPI
+    #######################
+
+  - hosts: bananapi
+    vars:
+      storage: /media/usb-storage
+      transmission_user: admin
+      transmission_pass: password
+
+    tasks:
+     - name: ensure system is up to date
+       apt: upgrade=dist
+       register: system_upgraded
+
+     - name: restart machine
+       command: shutdown -r now "Ansible updates triggered"
+       async: 0
+       poll: 0
+       ignore_errors: true
+       when: system_upgraded.changed
+
+     - name: waiting for server to come back
+       local_action: wait_for host={{ inventory_hostname }} state=started
+       sudo: false
+       when: system_upgraded.changed
+
+     - name: disable lightdm on boot
+       shell: echo manual > /etc/init/lightdm.override
+
+
+
+    #######################
+    ### PLEX STUFF
+    #######################
+     - name: setup plex repo key
+       apt_key: url='https://dev2day.de/pms/dev2day-pms.gpg.key' state=present
+
+     - name: setup plex repo
+       apt_repository: repo='deb https://dev2day.de/pms/ jessie main' state=present update_cache=yes
+
+     - name: setup plex server
+       apt: pkg={{ item }} state=present
+       with_items:
+         - libc6
+         - plexmediaserver
+
+
+
+    #######################
+    ### TRANSMISSION STUFF
+    #######################
+     - name: setup transmission-daemon
+       apt: pkg=transmission-daemon state=present
+
+     - name: stop transmission
+       service: name=transmission-daemon state=stopped
+
+     - name: drop in transmission-daemon config file
+       template:
+         src: settings.json.j2
+         dest: /etc/transmission-daemon/settings.json
+         mode: 0644
+
+     - name: start transmission
+       service: name=transmission-daemon state=started
+
+
+
+
+    #######################
+    ### NETATALK STUFF
+    #######################
+     - name: install netatalk
+       apt: pkg=netatalk state=present
+
+     - name: config netatalk
+       template:
+         src: AppleVolumes.default.j2
+         dest: /etc/netatalk/AppleVolumes.default
+         mode: 0644
+       notify: restart netatalk
+
+
+
+
+    #######################
+    ### FLEXGET STUFF
+    #######################
+     - name: setup python-pip
+       apt: pkg=python-pip state=present
+
+     - name: install flexget
+       pip: name=flexget
+
+     - name: flexget config file
+       template:
+         src: flexget-config.yml.j2
+         dest: ~pi/config.yml
+         mode: 0644
+
+     - name: flexget cron job
+       cron: name=flexget user=pi minute='*/15' job='/usr/bin/python2.7 /usr/local/bin/flexget --cron execute'
+
+
+
+    handlers:
+      - name: restart netatalk
+        service: name=netatalk state=restarted
