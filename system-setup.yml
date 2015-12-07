@@ -92,8 +92,11 @@
      - name: setup python-pip
        apt: pkg=python-pip state=present
 
-     - name: install flexget
-       pip: name=flexget
+     - name: install flexget and deps
+       pip: name={{ item }}
+       with_items:
+         - flexget
+         - transmissionrpc
 
      - name: flexget config file
        template:

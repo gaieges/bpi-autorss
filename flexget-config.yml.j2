@@ -2,4 +2,8 @@ tasks:
   tv-shows-task:
     rss: '{{ rss_feed }}'
     all_series: yes
-    download: '{{storage}}/watch/'
+    transmission:
+      host: localhost
+      port: 9091
+      username: {{ transmission_user }}
+      password: {{ transmission_pass }}
